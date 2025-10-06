@@ -35,7 +35,7 @@ func CheckEuro() {
 		return
 	}
 
-	if bid > 6.0 {
+	if bid > 7.0 {
 		fmt.Printf("Euro above 6.0")
 		return
 	}
