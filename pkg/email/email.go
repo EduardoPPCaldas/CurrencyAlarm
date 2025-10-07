@@ -5,18 +5,26 @@ import (
 	"os"
 )
 
-func SendEmail(subject, body string) error {
+type EmailSender interface {
+	SendEmail(subject string, to []string, message []byte) error
+}
+
+type smtpEmailSender struct {
+}
+
+func NewEmailSender() EmailSender {
+	return &smtpEmailSender{}
+}
+
+
+func (es smtpEmailSender) SendEmail(subject string, to []string, message []byte) error {
 	from := os.Getenv("EMAIL_FROM")
 	password := os.Getenv("EMAIL_PASSWORD")
-	to := os.Getenv("EMAIL_TO")
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
 
-	message := []byte("Subject: " + subject + "\r\n" +
-		"\r\n" + body + "\r\n")
-
 	auth := smtp.PlainAuth("", from, password, smtpHost)
 
-	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{to}, message)
+	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
 	return err
 }

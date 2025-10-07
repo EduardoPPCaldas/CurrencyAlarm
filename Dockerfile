@@ -6,11 +6,11 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 COPY . .
 
-# Build a static Linux binary for the worker located in cmd/worker
+# Build a static Linux binary for the worker located in cmd/api
 ENV CGO_ENABLED=0
 ENV GOOS=linux
 ENV GOARCH=amd64
-RUN go build -v -o /run-app ./cmd/worker
+RUN go build -v -o /run-app ./cmd/api
 
 FROM debian:bookworm-slim
 
