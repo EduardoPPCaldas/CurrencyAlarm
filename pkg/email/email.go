@@ -6,7 +6,7 @@ import (
 )
 
 type EmailSender interface {
-	SendEmail(subject string, to []string, message []byte) error
+	SendEmail(to []string, message []byte) error
 }
 
 type smtpEmailSender struct {
@@ -16,8 +16,7 @@ func NewEmailSender() EmailSender {
 	return &smtpEmailSender{}
 }
 
-
-func (es smtpEmailSender) SendEmail(subject string, to []string, message []byte) error {
+func (es smtpEmailSender) SendEmail(to []string, message []byte) error {
 	from := os.Getenv("EMAIL_FROM")
 	password := os.Getenv("EMAIL_PASSWORD")
 	smtpHost := os.Getenv("SMTP_HOST")

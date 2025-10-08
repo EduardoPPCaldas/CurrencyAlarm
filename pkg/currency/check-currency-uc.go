@@ -1,11 +1,14 @@
 package currency
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"time"
 
 	"github.com/EduardoPPCaldas/CurrencyAlarm/pkg/email"
+	"github.com/EduardoPPCaldas/CurrencyAlarm/templates"
 	"gorm.io/gorm"
 )
 
@@ -34,17 +37,33 @@ func (uc CheckCurrencyUC) Execute(currencyAlarm *CurrencyAlarm) error {
 		return nil
 	}
 
-	if currencyAlarm.AlarmedAt.Valid && currencyAlarm.AlarmedAt.Time.Format(time.DateOnly) == time.Now().UTC().Format(time.DateOnly) {
-		fmt.Printf("Currency Already alerted")
+	if currencyAlarm.AlarmedAt.Valid && currencyAlarm.AlarmedAt.Time.Truncate(24 * time.Hour).Equal(time.Now().UTC().Truncate(24 * time.Hour)) {
+		fmt.Printf("Currency Already alarmed")
 		return nil
 	}
 
 	fmt.Printf("🚨 Currency dropped! Current EUR/BRL: %.2f\n", bid)
 
-	subject := fmt.Sprintf("Currency Alert: %s < %.2f", currencyAlarm.ConvertedCurrency, currencyAlarm.Threshold)
-	body := fmt.Sprintf("The Currency just dropped below %.2f BRL!\n\nCurrent rate: %.2f", currencyAlarm.Threshold, bid)
+	subject := fmt.Sprintf("Currency Alarm: %s < %.2f", currencyAlarm.ConvertedCurrency, currencyAlarm.Threshold)
 
-	if err := uc.emailSender.SendEmail(subject, []string{currencyAlarm.Email}, []byte(body)); err != nil {
+	tmpl, err := template.ParseFS(templates.FS, "currency-alarm.html")
+	if err != nil {
+		return err
+	}
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, map[string]any{"CurrencyAlarm": currencyAlarm, "Bid": bid}); err != nil {
+		return err
+	}
+
+	msg := []byte(fmt.Sprintf(
+		"Subject: %s\r\n"+
+			"MIME-version: 1.0;\r\n"+
+			"Content-Type: text/html; charset=\"UTF-8\";\r\n\r\n"+
+			"%s",
+		subject, &body,
+	))
+
+	if err := uc.emailSender.SendEmail([]string{currencyAlarm.Email}, msg); err != nil {
 		fmt.Println("Error sending email:", err)
 		return err
 	}
@@ -52,7 +71,7 @@ func (uc CheckCurrencyUC) Execute(currencyAlarm *CurrencyAlarm) error {
 	fmt.Println("✅ Alert email sent!")
 
 	currencyAlarm.AlarmedAt = sql.NullTime{
-		Time: time.Now().UTC(),
+		Time:  time.Now().UTC(),
 		Valid: true,
 	}
 

@@ -33,6 +33,7 @@ func main() {
 	currencyChecker := currency.NewCurrencyChecker()
 	checkCurrencyUC := currency.NewCheckCurrencyUC(emailSender, currencyChecker, db)
 	createCurrencyAlarmUC := currency.NewCreateCurrencyAlarmUC(db)
+	deleteCurrencyAlarmUC := currency.NewDeleteCurrencyAlarmUC(db)
 
 	go StartAlarmWorker(db, *checkCurrencyUC)
 
@@ -40,7 +41,7 @@ func main() {
 	e.HTTPErrorHandler = route.ProblemDetailHTTPErrorHandler
 
 	routers := []route.Router{
-		currency.NewCurrencyAlarmRouter(*createCurrencyAlarmUC),
+		currency.NewCurrencyAlarmRouter(*createCurrencyAlarmUC, *deleteCurrencyAlarmUC),
 	}
 
 	for _, router := range routers {
@@ -51,10 +52,7 @@ func main() {
 }
 
 func StartAlarmWorker(database *gorm.DB, checkCurrencyUC currency.CheckCurrencyUC) {
-	ticker := time.NewTicker(1 * time.Hour)
-	defer ticker.Stop()
-
-	for range ticker.C {
+	for {
 		var currencyAlarms []currency.CurrencyAlarm
 		result := database.Find(&currencyAlarms)
 		if result.Error != nil {
@@ -65,5 +63,7 @@ func StartAlarmWorker(database *gorm.DB, checkCurrencyUC currency.CheckCurrencyU
 		for _, currencyAlarm := range currencyAlarms {
 			go checkCurrencyUC.Execute(&currencyAlarm)
 		}
+
+		time.Sleep(1 * time.Hour)
 	}
 }
